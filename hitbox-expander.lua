@@ -1,7 +1,7 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "⚔️ PVP MENU ⚔️",
+   Name = "⚔️ PVP MENU ⚔️ | by elvesz",
    LoadingTitle = "Carregando...",
    LoadingSubtitle = "Aguarde...",
    ConfigurationSaving = { Enabled = false },
@@ -38,7 +38,6 @@ local lp = game:GetService("Players").LocalPlayer
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
 
 -- Círculo FOV
 local FOVCircle = Drawing.new("Circle")
@@ -48,10 +47,20 @@ FOVCircle.Filled = false
 FOVCircle.Color = _G.HitboxColor
 FOVCircle.Transparency = 1
 
--- Tabela para armazenar ESP
+-- Texto de distância do aimbot
+local DistanceText = Drawing.new("Text")
+DistanceText.Visible = false
+DistanceText.Center = true
+DistanceText.Outline = true
+DistanceText.Size = 18
+DistanceText.Color = Color3.fromRGB(255, 255, 255)
+DistanceText.Transparency = 1
+DistanceText.Position = Vector2.new(0, 0)
+DistanceText.Text = ""
+
+-- Tabela para ESP
 local ESPDrawings = {}
 
--- Função para criar desenhos ESP de forma segura
 local function createESPDrawings(player)
     local drawings = {}
     
@@ -125,8 +134,12 @@ local HitboxPlayerDrop, AimbotPlayerDrop
 
 local function updatePlayerDropdowns()
     local list = getPlayersList()
-    if HitboxPlayerDrop then HitboxPlayerDrop:Refresh(list) end
-    if AimbotPlayerDrop then AimbotPlayerDrop:Refresh(list) end
+    if HitboxPlayerDrop then
+        pcall(function() HitboxPlayerDrop:Refresh(list) end)
+    end
+    if AimbotPlayerDrop then
+        pcall(function() AimbotPlayerDrop:Refresh(list) end)
+    end
 end
 
 local function getTargetPart(player)
@@ -168,7 +181,6 @@ local function resetHitbox()
     end
 end
 
--- Função para obter as partes do corpo para o esqueleto (R6/R15)
 local function getSkeletonParts(char)
     if char:FindFirstChild("UpperTorso") and char:FindFirstChild("LowerTorso") then
         return {
@@ -200,11 +212,9 @@ local function getSkeletonParts(char)
     end
 end
 
--- Função para desenhar caixa ao redor do corpo inteiro
 local function drawFullBodyBox(char, d, color)
     if not d.Box then return end
-    local model = char
-    local cf, size = model:GetBoundingBox()
+    local cf, size = char:GetBoundingBox()
     local corners = {
         (cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2)).p,
         (cf * CFrame.new( size.X/2, -size.Y/2, -size.Z/2)).p,
@@ -283,7 +293,6 @@ local function updateESP()
                 local head = char:FindFirstChild("Head")
                 
                 if hrp and head then
-                    -- Highlight
                     if d.Highlight then
                         pcall(function()
                             d.Highlight.Parent = char
@@ -298,7 +307,6 @@ local function updateESP()
                         end)
                     end
                     
-                    -- Nome
                     if _G.ESPNames and d.NameTag then
                         local headPos, onScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
                         if onScreen then
@@ -317,7 +325,6 @@ local function updateESP()
                         if d.NameTag then d.NameTag.Visible = false end
                     end
                     
-                    -- Box (agora desenha ao redor do corpo todo)
                     if _G.ESPBox and d.Box then
                         local color = _G.ESPBoxColor
                         if _G.ESPTeamColor and _G.ESPTeamCheck then
@@ -328,7 +335,6 @@ local function updateESP()
                         if d.Box then d.Box.Visible = false end
                     end
                     
-                    -- Esqueleto (agora com suporte R6/R15)
                     if _G.ESPSkeleton then
                         if d.Skeleton then
                             for _, line in pairs(d.Skeleton) do
@@ -410,10 +416,10 @@ runService.RenderStepped:Connect(function()
         end
     end
     
-    -- Aimbot (agora prioriza o mais próximo em distância 3D, mesmo fora da tela)
+    -- Aimbot (mira no mais próximo por distância em studs, com 2 casas decimais)
     if _G.AimbotEnabled then
         local targetPlayer = nil
-        local closestWorldDist = math.huge
+        local closestStuds = math.huge
         local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
         local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         local localPos = localRoot and localRoot.Position or camera.CFrame.Position
@@ -424,22 +430,20 @@ runService.RenderStepped:Connect(function()
                 if canTarget and isEnemy(player, _G.AimbotTeamCheck) then
                     local part = getTargetPart(player)
                     if part then
-                        local worldDist = (part.Position - localPos).Magnitude
+                        local studs = (part.Position - localPos).Magnitude
                         
                         if _G.AimbotCircleEnabled then
-                            -- Só considera alvos dentro do círculo na tela
                             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
                             if onScreen then
                                 local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                                if screenDist <= _G.AimbotCircleSize and isVisible(player, part) and worldDist < closestWorldDist then
-                                    closestWorldDist = worldDist
+                                if screenDist <= _G.AimbotCircleSize and isVisible(player, part) and studs < closestStuds then
+                                    closestStuds = studs
                                     targetPlayer = player
                                 end
                             end
                         else
-                            -- Sem círculo: considera qualquer alvo, mesmo fora da tela
-                            if isVisible(player, part) and worldDist < closestWorldDist then
-                                closestWorldDist = worldDist
+                            if isVisible(player, part) and studs < closestStuds then
+                                closestStuds = studs
                                 targetPlayer = player
                             end
                         end
@@ -452,8 +456,16 @@ runService.RenderStepped:Connect(function()
             local part = getTargetPart(targetPlayer)
             if part then
                 camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
+                local rounded = math.floor(closestStuds * 100 + 0.5) / 100
+                DistanceText.Visible = true
+                DistanceText.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2 - 50)
+                DistanceText.Text = "Alvo: " .. targetPlayer.Name .. " | Distância: " .. tostring(rounded) .. " studs"
             end
+        else
+            DistanceText.Visible = false
         end
+    else
+        DistanceText.Visible = false
     end
     
     -- ESP
@@ -473,7 +485,7 @@ players.PlayerRemoving:Connect(function(player)
     updatePlayerDropdowns()
 end)
 
--- Interface
+-- Interface com Rayfield
 local HitboxTab = Window:CreateTab("Hitbox", 4483362458)
 HitboxTab:CreateSection("Hitbox de Players")
 HitboxTab:CreateToggle({
@@ -484,78 +496,47 @@ HitboxTab:CreateToggle({
        if not Value then resetHitbox() end
    end,
 })
-HitboxTab:CreateInput({
+HitboxTab:CreateSlider({
    Name = "Tamanho da Hitbox",
-   PlaceholderText = "Ex: 25",
-   Callback = function(Text)
-       local n = tonumber(Text)
-       if n then _G.HitboxSize = n end
+   Range = {1, 50},
+   Increment = 1,
+   CurrentValue = 10,
+   Callback = function(Value)
+       _G.HitboxSize = Value
+   end,
+})
+HitboxTab:CreateSlider({
+   Name = "Transparência da Hitbox",
+   Range = {0, 1},
+   Increment = 0.1,
+   CurrentValue = 0.7,
+   Callback = function(Value)
+       _G.HitboxTransparency = Value
    end,
 })
 HitboxTab:CreateToggle({
    Name = "Team Check",
    CurrentValue = false,
-   Callback = function(Value) _G.HitboxTeamCheck = Value end,
+   Callback = function(Value)
+       _G.HitboxTeamCheck = Value
+   end,
 })
 HitboxTab:CreateSection("Alvo")
 HitboxPlayerDrop = HitboxTab:CreateDropdown({
    Name = "Alvo da Hitbox",
    Options = getPlayersList(),
-   CurrentOption = {"Todos"},
-   Callback = function(Option) _G.HitboxTargetPlayer = Option[1] end,
-})
-HitboxTab:CreateColorPicker({
-    Name = "Cor da Hitbox",
-    Color = _G.HitboxColor,
-    Callback = function(Value) _G.HitboxColor = Value end,
-})
-
-local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
-AimbotTab:CreateSection("Aimbot")
-AimbotTab:CreateToggle({
-   Name = "Ativar Aimbot",
-   CurrentValue = false,
-   Callback = function(Value) _G.AimbotEnabled = Value end,
-})
-AimbotTab:CreateDropdown({
-   Name = "Parte do Corpo",
-   Options = {"Head", "HumanoidRootPart"},
-   CurrentOption = {"Head"},
-   Callback = function(Option) _G.AimbotPart = Option[1] end,
-})
-AimbotTab:CreateToggle({
-   Name = "Team Check",
-   CurrentValue = false,
-   Callback = function(Value) _G.AimbotTeamCheck = Value end,
-})
-AimbotTab:CreateToggle({
-   Name = "Wall Check",
-   CurrentValue = false,
-   Callback = function(Value) _G.AimbotWallCheck = Value end,
-})
-AimbotTab:CreateSection("Círculo")
-AimbotTab:CreateToggle({
-   Name = "Usar Círculo",
-   CurrentValue = false,
-   Callback = function(Value) _G.AimbotCircleEnabled = Value end,
-})
-AimbotTab:CreateInput({
-   Name = "Raio do Círculo",
-   PlaceholderText = "Ex: 150",
-   Callback = function(Text)
-       local n = tonumber(Text)
-       if n then _G.AimbotCircleSize = n end
+   CurrentOption = "Todos",
+   Callback = function(Option)
+       _G.HitboxTargetPlayer = Option
    end,
 })
-AimbotTab:CreateSection("Alvo Específico")
-AimbotPlayerDrop = AimbotTab:CreateDropdown({
-   Name = "Alvo do Aimbot",
-   Options = getPlayersList(),
-   CurrentOption = {"Todos"},
-   Callback = function(Option) _G.AimbotTargetPlayer = Option[1] end,
+HitboxTab:CreateColorPicker({
+   Name = "Cor da Hitbox",
+   Color = _G.HitboxColor,
+   Callback = function(Value)
+       _G.HitboxColor = Value
+   end,
 })
-
--- Botões para atualizar lista
 HitboxTab:CreateButton({
    Name = "Atualizar Lista",
    Callback = function()
@@ -563,6 +544,64 @@ HitboxTab:CreateButton({
    end,
 })
 
+local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
+AimbotTab:CreateSection("Aimbot")
+AimbotTab:CreateToggle({
+   Name = "Ativar Aimbot",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.AimbotEnabled = Value
+       if not Value then DistanceText.Visible = false end
+   end,
+})
+AimbotTab:CreateDropdown({
+   Name = "Parte do Corpo",
+   Options = {"Head", "HumanoidRootPart"},
+   CurrentOption = "Head",
+   Callback = function(Option)
+       _G.AimbotPart = Option
+   end,
+})
+AimbotTab:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.AimbotTeamCheck = Value
+   end,
+})
+AimbotTab:CreateToggle({
+   Name = "Wall Check",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.AimbotWallCheck = Value
+   end,
+})
+AimbotTab:CreateSection("Círculo")
+AimbotTab:CreateToggle({
+   Name = "Usar Círculo",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.AimbotCircleEnabled = Value
+   end,
+})
+AimbotTab:CreateSlider({
+   Name = "Raio do Círculo",
+   Range = {10, 500},
+   Increment = 5,
+   CurrentValue = 100,
+   Callback = function(Value)
+       _G.AimbotCircleSize = Value
+   end,
+})
+AimbotTab:CreateSection("Alvo Específico")
+AimbotPlayerDrop = AimbotTab:CreateDropdown({
+   Name = "Alvo do Aimbot",
+   Options = getPlayersList(),
+   CurrentOption = "Todos",
+   Callback = function(Option)
+       _G.AimbotTargetPlayer = Option
+   end,
+})
 AimbotTab:CreateButton({
    Name = "Atualizar Lista",
    Callback = function()
@@ -575,22 +614,30 @@ ESPTab:CreateSection("ESP Principal")
 ESPTab:CreateToggle({
    Name = "Ativar ESP",
    CurrentValue = false,
-   Callback = function(Value) _G.ESPEnabled = Value end,
+   Callback = function(Value)
+       _G.ESPEnabled = Value
+   end,
 })
 ESPTab:CreateToggle({
    Name = "Mostrar Caixa (Box)",
    CurrentValue = false,
-   Callback = function(Value) _G.ESPBox = Value end,
+   Callback = function(Value)
+       _G.ESPBox = Value
+   end,
 })
 ESPTab:CreateToggle({
    Name = "Mostrar Esqueleto",
    CurrentValue = false,
-   Callback = function(Value) _G.ESPSkeleton = Value end,
+   Callback = function(Value)
+       _G.ESPSkeleton = Value
+   end,
 })
 ESPTab:CreateToggle({
    Name = "Mostrar Nomes",
    CurrentValue = false,
-   Callback = function(Value) _G.ESPNames = Value end,
+   Callback = function(Value)
+       _G.ESPNames = Value
+   end,
 })
 ESPTab:CreateSection("Team Check")
 ESPTab:CreateToggle({
@@ -603,30 +650,29 @@ ESPTab:CreateToggle({
 })
 ESPTab:CreateSection("Cores Personalizadas")
 ESPTab:CreateColorPicker({
-    Name = "Cor da Caixa",
-    Color = _G.ESPBoxColor,
-    Callback = function(Value)
-        _G.ESPBoxColor = Value
-        _G.ESPTeamColor = false
-    end,
+   Name = "Cor da Caixa",
+   Color = _G.ESPBoxColor,
+   Callback = function(Value)
+       _G.ESPBoxColor = Value
+       _G.ESPTeamColor = false
+   end,
 })
 ESPTab:CreateColorPicker({
-    Name = "Cor do Esqueleto",
-    Color = _G.ESPSkeletonColor,
-    Callback = function(Value)
-        _G.ESPSkeletonColor = Value
-        _G.ESPTeamColor = false
-    end,
+   Name = "Cor do Esqueleto",
+   Color = _G.ESPSkeletonColor,
+   Callback = function(Value)
+       _G.ESPSkeletonColor = Value
+       _G.ESPTeamColor = false
+   end,
 })
 ESPTab:CreateColorPicker({
-    Name = "Cor do Nome",
-    Color = _G.ESPNameColor,
-    Callback = function(Value)
-        _G.ESPNameColor = Value
-        _G.ESPTeamColor = false
-    end,
+   Name = "Cor do Nome",
+   Color = _G.ESPNameColor,
+   Callback = function(Value)
+       _G.ESPNameColor = Value
+       _G.ESPTeamColor = false
+   end,
 })
-
 ESPTab:CreateButton({
    Name = "Atualizar Lista",
    Callback = function()
