@@ -142,6 +142,15 @@ local function updatePlayerDropdowns()
     end
 end
 
+-- Função auxiliar para extrair valor de callback do dropdown (string ou tabela)
+local function extractDropdownValue(value)
+    if type(value) == "table" then
+        return value[1]
+    else
+        return value
+    end
+end
+
 local function getTargetPart(player)
     local char = player.Character
     if not char then return nil end
@@ -525,9 +534,9 @@ HitboxTab:CreateSection("Alvo")
 HitboxPlayerDrop = HitboxTab:CreateDropdown({
    Name = "Alvo da Hitbox",
    Options = getPlayersList(),
-   CurrentOption = "Todos",
+   CurrentOption = {"Todos"},
    Callback = function(Option)
-       _G.HitboxTargetPlayer = Option
+       _G.HitboxTargetPlayer = extractDropdownValue(Option) or "Todos"
    end,
 })
 HitboxTab:CreateColorPicker({
@@ -557,9 +566,9 @@ AimbotTab:CreateToggle({
 AimbotTab:CreateDropdown({
    Name = "Parte do Corpo",
    Options = {"Head", "HumanoidRootPart"},
-   CurrentOption = "Head",
+   CurrentOption = {"Head"},
    Callback = function(Option)
-       _G.AimbotPart = Option
+       _G.AimbotPart = extractDropdownValue(Option) or "Head"
    end,
 })
 AimbotTab:CreateToggle({
@@ -597,9 +606,9 @@ AimbotTab:CreateSection("Alvo Específico")
 AimbotPlayerDrop = AimbotTab:CreateDropdown({
    Name = "Alvo do Aimbot",
    Options = getPlayersList(),
-   CurrentOption = "Todos",
+   CurrentOption = {"Todos"},
    Callback = function(Option)
-       _G.AimbotTargetPlayer = Option
+       _G.AimbotTargetPlayer = extractDropdownValue(Option) or "Todos"
    end,
 })
 AimbotTab:CreateButton({
