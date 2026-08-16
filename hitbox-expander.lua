@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "⚔️ PVP MENU ⚔️ | by elvesz",
-   LoadingTitle = "O melhor menu de pvp.",
+   LoadingTitle = "O melhor menu de pvp",
    LoadingSubtitle = "Aproveite!",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
@@ -34,10 +34,26 @@ _G.ESPSkeletonColor = Color3.fromRGB(255, 255, 255)
 _G.ESPNameColor = Color3.fromRGB(255, 255, 255)
 _G.ESPTeamColor = true
 
+-- Player / Teleporte
+_G.SpeedValue = 16
+_G.JumpValue = 50
+_G.GravityValue = 196.2
+_G.LoopSpeed = false
+_G.LoopJump = false
+_G.LoopGravity = false
+
+_G.TeleportTargetPlayer = nil
+_G.TeleportPlayerLoop = false
+_G.TeleportPlayerCooldown = 0.05
+_G.TeleportPos = nil
+_G.TeleportPosLoop = false
+_G.TeleportPosCooldown = 0.05
+
 local lp = game:GetService("Players").LocalPlayer
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
+local StarterGui = game:GetService("StarterGui")
 
 -- Círculo FOV
 local FOVCircle = Drawing.new("Circle")
@@ -63,14 +79,13 @@ local ESPDrawings = {}
 
 local function createESPDrawings(player)
     local drawings = {}
-    
     local box = Drawing.new("Square")
     box.Visible = false
     box.Thickness = 2
     box.Filled = false
     box.Color = Color3.fromRGB(255, 255, 255)
     box.Transparency = 1
-    
+
     local nameTag = Drawing.new("Text")
     nameTag.Visible = false
     nameTag.Center = true
@@ -78,7 +93,7 @@ local function createESPDrawings(player)
     nameTag.Size = 16
     nameTag.Color = Color3.fromRGB(255, 255, 255)
     nameTag.Transparency = 1
-    
+
     local highlight = nil
     pcall(function()
         highlight = Instance.new("Highlight")
@@ -88,12 +103,11 @@ local function createESPDrawings(player)
         highlight.OutlineTransparency = 0
         highlight.Enabled = false
     end)
-    
+
     drawings.Box = box
     drawings.NameTag = nameTag
     drawings.Highlight = highlight
     drawings.Skeleton = {}
-    
     ESPDrawings[player] = drawings
     return drawings
 end
@@ -101,7 +115,6 @@ end
 local function removeESPDrawings(player)
     local d = ESPDrawings[player]
     if not d then return end
-    
     if d.Box then d.Box:Remove() end
     if d.NameTag then d.NameTag:Remove() end
     if d.Highlight then pcall(function() d.Highlight:Destroy() end) end
@@ -120,34 +133,38 @@ local function updateCircle()
     FOVCircle.Visible = _G.AimbotCircleEnabled
 end
 
-local function getPlayersList()
-    local list = {"Todos"}
+-- Função para encontrar jogador por parte do nome
+local function findPlayerByPartialName(partial)
+    partial = partial:lower()
     for _, v in pairs(players:GetPlayers()) do
-        if v ~= lp then
-            table.insert(list, v.Name)
+        if v ~= lp and v.Name:lower():sub(1, #partial) == partial then
+            return v
         end
     end
-    return list
+    return nil
 end
 
-local HitboxPlayerDrop, AimbotPlayerDrop
-
-local function updatePlayerDropdowns()
-    local list = getPlayersList()
-    if HitboxPlayerDrop then
-        pcall(function() HitboxPlayerDrop:Refresh(list) end)
-    end
-    if AimbotPlayerDrop then
-        pcall(function() AimbotPlayerDrop:Refresh(list) end)
-    end
-end
-
--- Função auxiliar para extrair valor de callback do dropdown (string ou tabela)
-local function extractDropdownValue(value)
-    if type(value) == "table" then
-        return value[1]
-    else
-        return value
+-- Atualiza alvo a partir do texto (se encontrar jogador)
+local function setTargetFromInput(text, targetType)
+    local found = findPlayerByPartialName(text)
+    if found then
+        if targetType == "hitbox" then
+            _G.HitboxTargetPlayer = found.Name
+            Rayfield:Notify({
+                Title = "Hitbox",
+                Content = found.Name .. " escolhido!",
+                Duration = 2,
+                Image = 4483362458
+            })
+        elseif targetType == "aimbot" then
+            _G.AimbotTargetPlayer = found.Name
+            Rayfield:Notify({
+                Title = "Aimbot",
+                Content = found.Name .. " escolhido!",
+                Duration = 2,
+                Image = 4483362458
+            })
+        end
     end
 end
 
@@ -271,19 +288,19 @@ local function updateESP()
         end
         return
     end
-    
+
     for _, player in pairs(players:GetPlayers()) do
         if player ~= lp and not ESPDrawings[player] then
             createESPDrawings(player)
         end
     end
-    
+
     for player, d in pairs(ESPDrawings) do
         if not players:FindFirstChild(player.Name) then
             removeESPDrawings(player)
         end
     end
-    
+
     for player, d in pairs(ESPDrawings) do
         if player ~= lp and player.Parent == players then
             local char = player.Character
@@ -296,11 +313,11 @@ local function updateESP()
                     d.Highlight.OutlineTransparency = 0
                     d.Highlight.Enabled = false
                 end
-                
+
                 local isEnemyPlayer = isEnemy(player, _G.ESPTeamCheck)
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 local head = char:FindFirstChild("Head")
-                
+
                 if hrp and head then
                     if d.Highlight then
                         pcall(function()
@@ -315,7 +332,7 @@ local function updateESP()
                             end
                         end)
                     end
-                    
+
                     if _G.ESPNames and d.NameTag then
                         local headPos, onScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
                         if onScreen then
@@ -333,7 +350,7 @@ local function updateESP()
                     else
                         if d.NameTag then d.NameTag.Visible = false end
                     end
-                    
+
                     if _G.ESPBox and d.Box then
                         local color = _G.ESPBoxColor
                         if _G.ESPTeamColor and _G.ESPTeamCheck then
@@ -343,7 +360,7 @@ local function updateESP()
                     else
                         if d.Box then d.Box.Visible = false end
                     end
-                    
+
                     if _G.ESPSkeleton then
                         if d.Skeleton then
                             for _, line in pairs(d.Skeleton) do
@@ -351,7 +368,7 @@ local function updateESP()
                             end
                         end
                         d.Skeleton = {}
-                        
+
                         local bodyParts = getSkeletonParts(char)
                         for _, pair in ipairs(bodyParts) do
                             local p1 = char:FindFirstChild(pair[1])
@@ -399,10 +416,67 @@ local function updateESP()
     end
 end
 
--- Loop principal
+local function applyPlayerSettings()
+    local char = lp.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        if _G.LoopSpeed then
+            humanoid.WalkSpeed = _G.SpeedValue
+        end
+        if _G.LoopJump then
+            humanoid.JumpPower = _G.JumpValue
+        end
+    end
+    if _G.LoopGravity then
+        workspace.Gravity = _G.GravityValue
+    end
+end
+
+-- Teleportes
+local lastTeleportPlayerTime = 0
+local lastTeleportPosTime = 0
+
+local function teleportToPlayer()
+    if not _G.TeleportTargetPlayer then return end
+    local target = players:FindFirstChild(_G.TeleportTargetPlayer)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPos = target.Character.HumanoidRootPart.Position
+        local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if localRoot then
+            localRoot.CFrame = CFrame.new(targetPos)
+        end
+    end
+end
+
+local function teleportToPosition()
+    if not _G.TeleportPos then return end
+    local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+    if localRoot then
+        localRoot.CFrame = CFrame.new(_G.TeleportPos)
+    end
+end
+
 runService.RenderStepped:Connect(function()
     updateCircle()
-    
+    applyPlayerSettings()
+
+    if _G.TeleportPlayerLoop then
+        local now = tick()
+        if now - lastTeleportPlayerTime >= _G.TeleportPlayerCooldown then
+            teleportToPlayer()
+            lastTeleportPlayerTime = now
+        end
+    end
+
+    if _G.TeleportPosLoop then
+        local now = tick()
+        if now - lastTeleportPosTime >= _G.TeleportPosCooldown then
+            teleportToPosition()
+            lastTeleportPosTime = now
+        end
+    end
+
     -- Hitbox
     if _G.HitboxEnabled then
         for _, player in pairs(players:GetPlayers()) do
@@ -424,15 +498,15 @@ runService.RenderStepped:Connect(function()
             end
         end
     end
-    
-    -- Aimbot (mira no mais próximo por distância em studs, com 2 casas decimais)
+
+    -- Aimbot
     if _G.AimbotEnabled then
         local targetPlayer = nil
         local closestStuds = math.huge
         local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
         local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         local localPos = localRoot and localRoot.Position or camera.CFrame.Position
-        
+
         for _, player in pairs(players:GetPlayers()) do
             if player ~= lp and player.Character then
                 local canTarget = (_G.AimbotTargetPlayer == "Todos" or player.Name == _G.AimbotTargetPlayer)
@@ -440,7 +514,7 @@ runService.RenderStepped:Connect(function()
                     local part = getTargetPart(player)
                     if part then
                         local studs = (part.Position - localPos).Magnitude
-                        
+
                         if _G.AimbotCircleEnabled then
                             local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
                             if onScreen then
@@ -460,7 +534,7 @@ runService.RenderStepped:Connect(function()
                 end
             end
         end
-        
+
         if targetPlayer and targetPlayer.Character then
             local part = getTargetPart(targetPlayer)
             if part then
@@ -476,25 +550,26 @@ runService.RenderStepped:Connect(function()
     else
         DistanceText.Visible = false
     end
-    
-    -- ESP
+
     updateESP()
 end)
 
--- Eventos de jogadores (atualização automática)
 players.PlayerAdded:Connect(function(player)
     if player ~= lp then
         createESPDrawings(player)
-        updatePlayerDropdowns()
     end
 end)
 
 players.PlayerRemoving:Connect(function(player)
     removeESPDrawings(player)
-    updatePlayerDropdowns()
 end)
 
--- Interface com Rayfield
+lp.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    applyPlayerSettings()
+end)
+
+-- Interface Rayfield
 local HitboxTab = Window:CreateTab("Hitbox", 4483362458)
 HitboxTab:CreateSection("Hitbox de Players")
 HitboxTab:CreateToggle({
@@ -505,13 +580,12 @@ HitboxTab:CreateToggle({
        if not Value then resetHitbox() end
    end,
 })
-HitboxTab:CreateSlider({
+HitboxTab:CreateInput({
    Name = "Tamanho da Hitbox",
-   Range = {1, 50},
-   Increment = 1,
-   CurrentValue = 10,
-   Callback = function(Value)
-       _G.HitboxSize = Value
+   PlaceholderText = "Ex: 25",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then _G.HitboxSize = n end
    end,
 })
 HitboxTab:CreateSlider({
@@ -531,12 +605,28 @@ HitboxTab:CreateToggle({
    end,
 })
 HitboxTab:CreateSection("Alvo")
-HitboxPlayerDrop = HitboxTab:CreateDropdown({
-   Name = "Alvo da Hitbox",
-   Options = getPlayersList(),
-   CurrentOption = {"Todos"},
-   Callback = function(Option)
-       _G.HitboxTargetPlayer = extractDropdownValue(Option) or "Todos"
+HitboxTab:CreateInput({
+   Name = "Alvo da Hitbox (Nome parcial)",
+   PlaceholderText = "",
+   Callback = function(Text)
+       setTargetFromInput(Text, "hitbox")
+   end,
+})
+HitboxTab:CreateButton({
+   Name = "Todos",
+   Callback = function()
+       _G.HitboxTargetPlayer = "Todos"
+       Rayfield:Notify({
+           Title = "Hitbox",
+           Content = "todos escolhidos!",
+           Duration = 2,
+           Image = 4483362458
+       })
+       StarterGui:SetCore("SendNotification", {
+           Title = "Hitbox",
+           Text = "todos escolhidos!",
+           Icon = "rbxassetid://4483362458"
+       })
    end,
 })
 HitboxTab:CreateColorPicker({
@@ -544,12 +634,6 @@ HitboxTab:CreateColorPicker({
    Color = _G.HitboxColor,
    Callback = function(Value)
        _G.HitboxColor = Value
-   end,
-})
-HitboxTab:CreateButton({
-   Name = "Atualizar Lista",
-   Callback = function()
-       updatePlayerDropdowns()
    end,
 })
 
@@ -566,9 +650,9 @@ AimbotTab:CreateToggle({
 AimbotTab:CreateDropdown({
    Name = "Parte do Corpo",
    Options = {"Head", "HumanoidRootPart"},
-   CurrentOption = {"Head"},
+   CurrentOption = "Head",
    Callback = function(Option)
-       _G.AimbotPart = extractDropdownValue(Option) or "Head"
+       _G.AimbotPart = Option
    end,
 })
 AimbotTab:CreateToggle({
@@ -593,28 +677,38 @@ AimbotTab:CreateToggle({
        _G.AimbotCircleEnabled = Value
    end,
 })
-AimbotTab:CreateSlider({
+AimbotTab:CreateInput({
    Name = "Raio do Círculo",
-   Range = {10, 500},
-   Increment = 5,
-   CurrentValue = 100,
-   Callback = function(Value)
-       _G.AimbotCircleSize = Value
+   PlaceholderText = "Ex: 100",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then _G.AimbotCircleSize = n end
    end,
 })
 AimbotTab:CreateSection("Alvo Específico")
-AimbotPlayerDrop = AimbotTab:CreateDropdown({
-   Name = "Alvo do Aimbot",
-   Options = getPlayersList(),
-   CurrentOption = {"Todos"},
-   Callback = function(Option)
-       _G.AimbotTargetPlayer = extractDropdownValue(Option) or "Todos"
+AimbotTab:CreateInput({
+   Name = "Alvo do Aimbot (Nome parcial)",
+   PlaceholderText = "",
+   Callback = function(Text)
+       setTargetFromInput(Text, "aimbot")
    end,
 })
+-- Botão Todos do Aimbot
 AimbotTab:CreateButton({
-   Name = "Atualizar Lista",
+   Name = "Todos",
    Callback = function()
-       updatePlayerDropdowns()
+       _G.AimbotTargetPlayer = "Todos"
+       Rayfield:Notify({
+           Title = "Aimbot",
+           Content = "todos escolhidos!",
+           Duration = 2,
+           Image = 4483362458
+       })
+       StarterGui:SetCore("SendNotification", {
+           Title = "Aimbot",
+           Text = "todos escolhidos!",
+           Icon = "rbxassetid://4483362458"
+       })
    end,
 })
 
@@ -682,10 +776,187 @@ ESPTab:CreateColorPicker({
        _G.ESPTeamColor = false
    end,
 })
-ESPTab:CreateButton({
-   Name = "Atualizar Lista",
+
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+PlayerTab:CreateSection("Atributos Físicos")
+PlayerTab:CreateInput({
+   Name = "Velocidade",
+   PlaceholderText = "16",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then
+           _G.SpeedValue = n
+           if _G.LoopSpeed then
+               local char = lp.Character
+               if char and char:FindFirstChildOfClass("Humanoid") then
+                   char:FindFirstChildOfClass("Humanoid").WalkSpeed = n
+               end
+           end
+       end
+   end,
+})
+PlayerTab:CreateInput({
+   Name = "Pulo",
+   PlaceholderText = "50",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then
+           _G.JumpValue = n
+           if _G.LoopJump then
+               local char = lp.Character
+               if char and char:FindFirstChildOfClass("Humanoid") then
+                   char:FindFirstChildOfClass("Humanoid").JumpPower = n
+               end
+           end
+       end
+   end,
+})
+PlayerTab:CreateInput({
+   Name = "Gravidade",
+   PlaceholderText = "196.2",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then
+           _G.GravityValue = n
+           if _G.LoopGravity then
+               workspace.Gravity = n
+           end
+       end
+   end,
+})
+PlayerTab:CreateSection("Loops")
+PlayerTab:CreateToggle({
+   Name = "Loop Speed",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.LoopSpeed = Value
+       if Value then
+           local char = lp.Character
+           if char and char:FindFirstChildOfClass("Humanoid") then
+               char:FindFirstChildOfClass("Humanoid").WalkSpeed = _G.SpeedValue
+           end
+       end
+   end,
+})
+PlayerTab:CreateToggle({
+   Name = "Loop Jump",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.LoopJump = Value
+       if Value then
+           local char = lp.Character
+           if char and char:FindFirstChildOfClass("Humanoid") then
+               char:FindFirstChildOfClass("Humanoid").JumpPower = _G.JumpValue
+           end
+       end
+   end,
+})
+PlayerTab:CreateToggle({
+   Name = "Loop Gravity",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.LoopGravity = Value
+       if Value then
+           workspace.Gravity = _G.GravityValue
+       end
+   end,
+})
+
+PlayerTab:CreateSection("Teleporte para Jogador")
+PlayerTab:CreateInput({
+   Name = "Nome do Jogador (parcial)",
+   PlaceholderText = "",
+   Callback = function(Text)
+       local found = findPlayerByPartialName(Text)
+       if found then
+           _G.TeleportTargetPlayer = found.Name
+           Rayfield:Notify({
+               Title = "Teleporte",
+               Content = found.Name .. " escolhido!",
+               Duration = 2,
+               Image = 4483362458
+           })
+       else
+           _G.TeleportTargetPlayer = nil
+       end
+   end,
+})
+PlayerTab:CreateButton({
+   Name = "Teleportar Agora",
    Callback = function()
-       updatePlayerDropdowns()
+       teleportToPlayer()
+   end,
+})
+PlayerTab:CreateToggle({
+   Name = "Loop Tp (Jogador)",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.TeleportPlayerLoop = Value
+   end,
+})
+PlayerTab:CreateInput({
+   Name = "Cooldown do Loop Tp (segundos)",
+   PlaceholderText = "0.05",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then _G.TeleportPlayerCooldown = n end
+   end,
+})
+
+PlayerTab:CreateSection("Teleporte para Posição")
+PlayerTab:CreateInput({
+   Name = "Posição (x,y,z)",
+   PlaceholderText = "10,20,30",
+   Callback = function(Text)
+       local parts = Text:split(",")
+       if #parts == 3 then
+           local x = tonumber(parts[1])
+           local y = tonumber(parts[2])
+           local z = tonumber(parts[3])
+           if x and y and z then
+               _G.TeleportPos = Vector3.new(x, y, z)
+           end
+       end
+   end,
+})
+PlayerTab:CreateButton({
+   Name = "Teleportar para Posição",
+   Callback = function()
+       teleportToPosition()
+   end,
+})
+PlayerTab:CreateToggle({
+   Name = "Loop Tp Pos",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.TeleportPosLoop = Value
+   end,
+})
+PlayerTab:CreateInput({
+   Name = "Cooldown do Loop Tp Pos (segundos)",
+   PlaceholderText = "0.05",
+   Callback = function(Text)
+       local n = tonumber(Text)
+       if n then _G.TeleportPosCooldown = n end
+   end,
+})
+
+PlayerTab:CreateSection("Utilidades")
+PlayerTab:CreateButton({
+   Name = "Instant Interact",
+   Callback = function()
+       for _, prompt in pairs(workspace:GetDescendants()) do
+           if prompt:IsA("ProximityPrompt") then
+               prompt.HoldDuration = 0
+               prompt.Duration = 0
+           end
+       end
+       workspace.DescendantAdded:Connect(function(desc)
+           if desc:IsA("ProximityPrompt") then
+               desc.HoldDuration = 0
+               desc.Duration = 0
+           end
+       end)
    end,
 })
 
@@ -695,5 +966,3 @@ for _, player in pairs(players:GetPlayers()) do
         createESPDrawings(player)
     end
 end
-
-updatePlayerDropdowns()
