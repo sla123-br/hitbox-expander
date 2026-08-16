@@ -2,8 +2,8 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "⚔️ PVP MENU ⚔️ | by elvesz",
-   LoadingTitle = "Carregando...",
-   LoadingSubtitle = "Aguarde...",
+   LoadingTitle = "O melhor menu de pvp.",
+   LoadingSubtitle = "Aproveite!",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
 })
