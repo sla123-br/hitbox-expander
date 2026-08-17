@@ -34,7 +34,6 @@ _G.ESPSkeletonColor = Color3.fromRGB(255, 255, 255)
 _G.ESPNameColor = Color3.fromRGB(255, 255, 255)
 _G.ESPTeamColor = true
 
--- Player / Teleporte
 _G.SpeedValue = 16
 _G.JumpValue = 50
 _G.GravityValue = 196.2
@@ -55,6 +54,7 @@ local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
 local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
 
 -- Círculo FOV
 local FOVCircle = Drawing.new("Circle")
@@ -62,7 +62,7 @@ FOVCircle.Visible = false
 FOVCircle.Thickness = 2
 FOVCircle.Filled = false
 FOVCircle.Color = _G.HitboxColor
-FOVCircle.Transparency = 1
+FOVCircle.Transparency = 0
 
 -- Texto de distância do aimbot
 local DistanceText = Drawing.new("Text")
@@ -71,9 +71,25 @@ DistanceText.Center = true
 DistanceText.Outline = true
 DistanceText.Size = 18
 DistanceText.Color = Color3.fromRGB(255, 255, 255)
-DistanceText.Transparency = 1
+DistanceText.Transparency = 0
 DistanceText.Position = Vector2.new(0, 0)
 DistanceText.Text = ""
+
+-- Função para obter o centro real da tela (com GUI Inset)
+local function getScreenCenter()
+    local inset = GuiService:GetGuiInset()
+    return Vector2.new(camera.ViewportSize.X / 2, inset.Y + camera.ViewportSize.Y / 2)
+end
+
+-- Atualizar círculo
+local function updateCircle()
+    local center = getScreenCenter()
+    FOVCircle.Position = center
+    FOVCircle.Radius = _G.AimbotCircleSize
+    FOVCircle.Color = _G.HitboxColor
+    FOVCircle.Visible = _G.AimbotCircleEnabled
+    FOVCircle.Transparency = 0
+end
 
 -- Tabela para ESP
 local ESPDrawings = {}
@@ -85,7 +101,7 @@ local function createESPDrawings(player)
     box.Thickness = 2
     box.Filled = false
     box.Color = Color3.fromRGB(255, 255, 255)
-    box.Transparency = 1
+    box.Transparency = 0
 
     local nameTag = Drawing.new("Text")
     nameTag.Visible = false
@@ -93,7 +109,7 @@ local function createESPDrawings(player)
     nameTag.Outline = true
     nameTag.Size = 16
     nameTag.Color = Color3.fromRGB(255, 255, 255)
-    nameTag.Transparency = 1
+    nameTag.Transparency = 0
 
     local highlight = nil
     pcall(function()
@@ -127,14 +143,6 @@ local function removeESPDrawings(player)
     ESPDrawings[player] = nil
 end
 
-local function updateCircle()
-    FOVCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-    FOVCircle.Radius = _G.AimbotCircleSize
-    FOVCircle.Color = _G.HitboxColor
-    FOVCircle.Visible = _G.AimbotCircleEnabled
-end
-
--- Função para encontrar jogador por parte do nome
 local function findPlayerByPartialName(partial)
     partial = partial:lower()
     for _, v in pairs(players:GetPlayers()) do
@@ -145,7 +153,6 @@ local function findPlayerByPartialName(partial)
     return nil
 end
 
--- Atualiza alvo a partir do texto (se encontrar jogador)
 local function setTargetFromInput(text, targetType)
     local found = findPlayerByPartialName(text)
     if found then
@@ -282,14 +289,12 @@ local function updateESP()
         return
     end
 
-    -- Garantir que todos os jogadores ativos tenham entrada
     for _, player in pairs(players:GetPlayers()) do
         if player ~= lp and not ESPDrawings[player] then
             createESPDrawings(player)
         end
     end
 
-    -- Remover entradas de jogadores que saíram
     local toRemove = {}
     for player, _ in pairs(ESPDrawings) do
         if not players:FindFirstChild(player.Name) then
@@ -300,12 +305,10 @@ local function updateESP()
         removeESPDrawings(player)
     end
 
-    -- Atualizar cada jogador de forma isolada
     for player, d in pairs(ESPDrawings) do
         pcall(function()
             local char = player.Character
             if char and char.Parent then
-                -- Verificar se o Highlight ainda é válido
                 if d.Highlight and not d.Highlight.Parent then
                     d.Highlight = Instance.new("Highlight")
                     d.Highlight.FillColor = Color3.fromRGB(255,0,0)
@@ -320,7 +323,6 @@ local function updateESP()
                 local head = char:FindFirstChild("Head")
 
                 if hrp and head then
-                    -- Highlight
                     if d.Highlight then
                         pcall(function()
                             d.Highlight.Parent = char
@@ -335,7 +337,6 @@ local function updateESP()
                         end)
                     end
 
-                    -- Nome
                     if _G.ESPNames and d.NameTag then
                         local headPos, onScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
                         if onScreen then
@@ -354,7 +355,6 @@ local function updateESP()
                         if d.NameTag then d.NameTag.Visible = false end
                     end
 
-                    -- Box
                     if _G.ESPBox and d.Box then
                         local color = _G.ESPBoxColor
                         if _G.ESPTeamColor and _G.ESPTeamCheck then
@@ -365,7 +365,6 @@ local function updateESP()
                         if d.Box then d.Box.Visible = false end
                     end
 
-                    -- Esqueleto
                     if _G.ESPSkeleton then
                         if d.Skeleton then
                             for _, line in pairs(d.Skeleton) do
@@ -387,7 +386,7 @@ local function updateESP()
                                     line.From = Vector2.new(pos1.X, pos1.Y)
                                     line.To = Vector2.new(pos2.X, pos2.Y)
                                     line.Thickness = 1.5
-                                    line.Transparency = 1
+                                    line.Transparency = 0
                                     if _G.ESPTeamColor and _G.ESPTeamCheck then
                                         line.Color = isEnemyPlayer and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
                                     else
@@ -406,7 +405,6 @@ local function updateESP()
                     end
                 end
             else
-                -- Sem personagem, ocultar tudo
                 pcall(function() if d.Box then d.Box.Visible = false end end)
                 pcall(function() if d.NameTag then d.NameTag.Visible = false end end)
                 pcall(function() if d.Highlight then d.Highlight.Enabled = false end end)
@@ -437,7 +435,6 @@ local function applyPlayerSettings()
     end
 end
 
--- Função para aplicar valores imediatamente
 local function applyImmediate(attr, value)
     if attr == "Speed" then
         _G.SpeedValue = value
@@ -455,7 +452,6 @@ local function applyImmediate(attr, value)
     end
 end
 
--- Teleportes
 local lastTeleportPlayerTime = 0
 local lastTeleportPosTime = 0
 
@@ -479,12 +475,10 @@ local function teleportToPosition()
     end
 end
 
--- Loop principal (separação de sistemas para evitar travamentos)
 runService.RenderStepped:Connect(function()
     pcall(updateCircle)
     pcall(applyPlayerSettings)
 
-    -- Teleporte loop jogador
     pcall(function()
         if _G.TeleportPlayerLoop then
             local now = tick()
@@ -495,7 +489,6 @@ runService.RenderStepped:Connect(function()
         end
     end)
 
-    -- Teleporte loop posição
     pcall(function()
         if _G.TeleportPosLoop then
             local now = tick()
@@ -506,7 +499,6 @@ runService.RenderStepped:Connect(function()
         end
     end)
 
-    -- Instant Interact (aplicado a cada frame)
     pcall(function()
         if _G.InstantInteractEnabled then
             for _, prompt in pairs(workspace:GetDescendants()) do
@@ -517,7 +509,6 @@ runService.RenderStepped:Connect(function()
         end
     end)
 
-    -- Hitbox
     pcall(function()
         if _G.HitboxEnabled then
             for _, player in pairs(players:GetPlayers()) do
@@ -541,12 +532,11 @@ runService.RenderStepped:Connect(function()
         end
     end)
 
-    -- Aimbot
     pcall(function()
         if _G.AimbotEnabled then
             local targetPlayer = nil
             local closestStuds = math.huge
-            local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+            local center = getScreenCenter()
             local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
             local localPos = localRoot and localRoot.Position or camera.CFrame.Position
 
@@ -583,8 +573,9 @@ runService.RenderStepped:Connect(function()
                 if part then
                     camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
                     local rounded = math.floor(closestStuds * 100 + 0.5) / 100
+                    local center = getScreenCenter()
                     DistanceText.Visible = true
-                    DistanceText.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2 - 50)
+                    DistanceText.Position = Vector2.new(center.X, center.Y - 50)
                     DistanceText.Text = "Alvo: " .. targetPlayer.Name .. " | Distância: " .. tostring(rounded) .. " studs"
                 end
             else
@@ -595,7 +586,6 @@ runService.RenderStepped:Connect(function()
         end
     end)
 
-    -- ESP
     pcall(updateESP)
 end)
 
@@ -803,7 +793,6 @@ ESPTab:CreateColorPicker({
    end,
 })
 
--- Aba Player
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 PlayerTab:CreateSection("Atributos Físicos")
 local SpeedInput = PlayerTab:CreateInput({
@@ -879,15 +868,12 @@ PlayerTab:CreateSection("Redefinir")
 PlayerTab:CreateButton({
    Name = "Redefinir Valores",
    Callback = function()
-       -- Redefine as variáveis
        _G.SpeedValue = 16
        _G.JumpValue = 50
        _G.GravityValue = 196.2
-       -- Aplica imediatamente
        applyImmediate("Speed", 16)
        applyImmediate("Jump", 50)
        applyImmediate("Gravity", 196.2)
-       -- Atualiza os campos de texto
        pcall(function() SpeedInput:Set("16") end)
        pcall(function() JumpInput:Set("50") end)
        pcall(function() GravityInput:Set("196.2") end)
@@ -974,7 +960,6 @@ PlayerTab:CreateButton({
    Name = "Instant Interact",
    Callback = function()
        _G.InstantInteractEnabled = true
-       -- Aplicar imediatamente aos prompts existentes
        for _, prompt in pairs(workspace:GetDescendants()) do
            if prompt:IsA("ProximityPrompt") then
                prompt.HoldDuration = 0
@@ -984,7 +969,6 @@ PlayerTab:CreateButton({
    end,
 })
 
--- Inicializar ESP para jogadores existentes
 for _, player in pairs(players:GetPlayers()) do
     if player ~= lp then
         pcall(function() createESPDrawings(player) end)
