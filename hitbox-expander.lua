@@ -2,8 +2,8 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "⚔️ PVP MENU ⚔️ | by elvesz",
-   LoadingTitle = "O melhor menu de pvp",
-   LoadingSubtitle = "Aproveite!",
+   LoadingTitle = "Carregando...",
+   LoadingSubtitle = "Aguarde...",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false,
 })
@@ -41,6 +41,7 @@ _G.GravityValue = 196.2
 _G.LoopSpeed = false
 _G.LoopJump = false
 _G.LoopGravity = false
+_G.InstantInteractEnabled = false
 
 _G.TeleportTargetPlayer = nil
 _G.TeleportPlayerLoop = false
@@ -115,12 +116,12 @@ end
 local function removeESPDrawings(player)
     local d = ESPDrawings[player]
     if not d then return end
-    if d.Box then d.Box:Remove() end
-    if d.NameTag then d.NameTag:Remove() end
-    if d.Highlight then pcall(function() d.Highlight:Destroy() end) end
+    pcall(function() if d.Box then d.Box:Remove() end end)
+    pcall(function() if d.NameTag then d.NameTag:Remove() end end)
+    pcall(function() if d.Highlight then d.Highlight:Destroy() end end)
     if d.Skeleton then
         for _, line in pairs(d.Skeleton) do
-            if line then line:Remove() end
+            pcall(function() line:Remove() end)
         end
     end
     ESPDrawings[player] = nil
@@ -150,20 +151,10 @@ local function setTargetFromInput(text, targetType)
     if found then
         if targetType == "hitbox" then
             _G.HitboxTargetPlayer = found.Name
-            Rayfield:Notify({
-                Title = "Hitbox",
-                Content = found.Name .. " escolhido!",
-                Duration = 2,
-                Image = 4483362458
-            })
+            Rayfield:Notify({ Title = "Hitbox", Content = found.Name .. " escolhido!", Duration = 2, Image = 4483362458 })
         elseif targetType == "aimbot" then
             _G.AimbotTargetPlayer = found.Name
-            Rayfield:Notify({
-                Title = "Aimbot",
-                Content = found.Name .. " escolhido!",
-                Duration = 2,
-                Image = 4483362458
-            })
+            Rayfield:Notify({ Title = "Aimbot", Content = found.Name .. " escolhido!", Duration = 2, Image = 4483362458 })
         end
     end
 end
@@ -240,71 +231,81 @@ end
 
 local function drawFullBodyBox(char, d, color)
     if not d.Box then return end
-    local cf, size = char:GetBoundingBox()
-    local corners = {
-        (cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2)).p,
-        (cf * CFrame.new( size.X/2, -size.Y/2, -size.Z/2)).p,
-        (cf * CFrame.new( size.X/2,  size.Y/2, -size.Z/2)).p,
-        (cf * CFrame.new(-size.X/2,  size.Y/2, -size.Z/2)).p,
-        (cf * CFrame.new(-size.X/2, -size.Y/2,  size.Z/2)).p,
-        (cf * CFrame.new( size.X/2, -size.Y/2,  size.Z/2)).p,
-        (cf * CFrame.new( size.X/2,  size.Y/2,  size.Z/2)).p,
-        (cf * CFrame.new(-size.X/2,  size.Y/2,  size.Z/2)).p,
-    }
-    local minX, minY = math.huge, math.huge
-    local maxX, maxY = -math.huge, -math.huge
-    local onScreenAny = false
-    for _, corner in ipairs(corners) do
-        local screenPos, onScreen = camera:WorldToViewportPoint(corner)
-        if onScreen then
-            onScreenAny = true
-            if screenPos.X < minX then minX = screenPos.X end
-            if screenPos.X > maxX then maxX = screenPos.X end
-            if screenPos.Y < minY then minY = screenPos.Y end
-            if screenPos.Y > maxY then maxY = screenPos.Y end
+    pcall(function()
+        local cf, size = char:GetBoundingBox()
+        local corners = {
+            (cf * CFrame.new(-size.X/2, -size.Y/2, -size.Z/2)).p,
+            (cf * CFrame.new( size.X/2, -size.Y/2, -size.Z/2)).p,
+            (cf * CFrame.new( size.X/2,  size.Y/2, -size.Z/2)).p,
+            (cf * CFrame.new(-size.X/2,  size.Y/2, -size.Z/2)).p,
+            (cf * CFrame.new(-size.X/2, -size.Y/2,  size.Z/2)).p,
+            (cf * CFrame.new( size.X/2, -size.Y/2,  size.Z/2)).p,
+            (cf * CFrame.new( size.X/2,  size.Y/2,  size.Z/2)).p,
+            (cf * CFrame.new(-size.X/2,  size.Y/2,  size.Z/2)).p,
+        }
+        local minX, minY = math.huge, math.huge
+        local maxX, maxY = -math.huge, -math.huge
+        local onScreenAny = false
+        for _, corner in ipairs(corners) do
+            local screenPos, onScreen = camera:WorldToViewportPoint(corner)
+            if onScreen then
+                onScreenAny = true
+                if screenPos.X < minX then minX = screenPos.X end
+                if screenPos.X > maxX then maxX = screenPos.X end
+                if screenPos.Y < minY then minY = screenPos.Y end
+                if screenPos.Y > maxY then maxY = screenPos.Y end
+            end
         end
-    end
-    if onScreenAny then
-        d.Box.Visible = true
-        d.Box.Position = Vector2.new(minX, minY)
-        d.Box.Size = Vector2.new(maxX - minX, maxY - minY)
-        d.Box.Color = color
-    else
-        d.Box.Visible = false
-    end
+        if onScreenAny then
+            d.Box.Visible = true
+            d.Box.Position = Vector2.new(minX, minY)
+            d.Box.Size = Vector2.new(maxX - minX, maxY - minY)
+            d.Box.Color = color
+        else
+            d.Box.Visible = false
+        end
+    end)
 end
 
 local function updateESP()
     if not _G.ESPEnabled then
         for _, d in pairs(ESPDrawings) do
-            if d.Box then d.Box.Visible = false end
-            if d.NameTag then d.NameTag.Visible = false end
-            if d.Highlight then pcall(function() d.Highlight.Enabled = false end) end
+            pcall(function() if d.Box then d.Box.Visible = false end end)
+            pcall(function() if d.NameTag then d.NameTag.Visible = false end end)
+            pcall(function() if d.Highlight then d.Highlight.Enabled = false end end)
             if d.Skeleton then
                 for _, line in pairs(d.Skeleton) do
-                    if line then line.Visible = false end
+                    pcall(function() line.Visible = false end)
                 end
             end
         end
         return
     end
 
+    -- Garantir que todos os jogadores ativos tenham entrada
     for _, player in pairs(players:GetPlayers()) do
         if player ~= lp and not ESPDrawings[player] then
             createESPDrawings(player)
         end
     end
 
-    for player, d in pairs(ESPDrawings) do
+    -- Remover entradas de jogadores que saíram
+    local toRemove = {}
+    for player, _ in pairs(ESPDrawings) do
         if not players:FindFirstChild(player.Name) then
-            removeESPDrawings(player)
+            table.insert(toRemove, player)
         end
     end
+    for _, player in ipairs(toRemove) do
+        removeESPDrawings(player)
+    end
 
+    -- Atualizar cada jogador de forma isolada
     for player, d in pairs(ESPDrawings) do
-        if player ~= lp and player.Parent == players then
+        pcall(function()
             local char = player.Character
             if char and char.Parent then
+                -- Verificar se o Highlight ainda é válido
                 if d.Highlight and not d.Highlight.Parent then
                     d.Highlight = Instance.new("Highlight")
                     d.Highlight.FillColor = Color3.fromRGB(255,0,0)
@@ -319,6 +320,7 @@ local function updateESP()
                 local head = char:FindFirstChild("Head")
 
                 if hrp and head then
+                    -- Highlight
                     if d.Highlight then
                         pcall(function()
                             d.Highlight.Parent = char
@@ -333,6 +335,7 @@ local function updateESP()
                         end)
                     end
 
+                    -- Nome
                     if _G.ESPNames and d.NameTag then
                         local headPos, onScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
                         if onScreen then
@@ -351,6 +354,7 @@ local function updateESP()
                         if d.NameTag then d.NameTag.Visible = false end
                     end
 
+                    -- Box
                     if _G.ESPBox and d.Box then
                         local color = _G.ESPBoxColor
                         if _G.ESPTeamColor and _G.ESPTeamCheck then
@@ -361,10 +365,11 @@ local function updateESP()
                         if d.Box then d.Box.Visible = false end
                     end
 
+                    -- Esqueleto
                     if _G.ESPSkeleton then
                         if d.Skeleton then
                             for _, line in pairs(d.Skeleton) do
-                                if line then line:Remove() end
+                                pcall(function() line:Remove() end)
                             end
                         end
                         d.Skeleton = {}
@@ -395,24 +400,23 @@ local function updateESP()
                     else
                         if d.Skeleton then
                             for _, line in pairs(d.Skeleton) do
-                                if line then line.Visible = false end
+                                pcall(function() line.Visible = false end)
                             end
                         end
                     end
                 end
             else
-                if d.Box then d.Box.Visible = false end
-                if d.NameTag then d.NameTag.Visible = false end
-                if d.Highlight then pcall(function() d.Highlight.Enabled = false end) end
+                -- Sem personagem, ocultar tudo
+                pcall(function() if d.Box then d.Box.Visible = false end end)
+                pcall(function() if d.NameTag then d.NameTag.Visible = false end end)
+                pcall(function() if d.Highlight then d.Highlight.Enabled = false end end)
                 if d.Skeleton then
                     for _, line in pairs(d.Skeleton) do
-                        if line then line.Visible = false end
+                        pcall(function() line.Visible = false end)
                     end
                 end
             end
-        else
-            removeESPDrawings(player)
-        end
+        end)
     end
 end
 
@@ -430,6 +434,24 @@ local function applyPlayerSettings()
     end
     if _G.LoopGravity then
         workspace.Gravity = _G.GravityValue
+    end
+end
+
+-- Função para aplicar valores imediatamente
+local function applyImmediate(attr, value)
+    if attr == "Speed" then
+        _G.SpeedValue = value
+        if lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
+            lp.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
+        end
+    elseif attr == "Jump" then
+        _G.JumpValue = value
+        if lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
+            lp.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
+        end
+    elseif attr == "Gravity" then
+        _G.GravityValue = value
+        workspace.Gravity = value
     end
 end
 
@@ -457,116 +479,139 @@ local function teleportToPosition()
     end
 end
 
+-- Loop principal (separação de sistemas para evitar travamentos)
 runService.RenderStepped:Connect(function()
-    updateCircle()
-    applyPlayerSettings()
+    pcall(updateCircle)
+    pcall(applyPlayerSettings)
 
-    if _G.TeleportPlayerLoop then
-        local now = tick()
-        if now - lastTeleportPlayerTime >= _G.TeleportPlayerCooldown then
-            teleportToPlayer()
-            lastTeleportPlayerTime = now
+    -- Teleporte loop jogador
+    pcall(function()
+        if _G.TeleportPlayerLoop then
+            local now = tick()
+            if now - lastTeleportPlayerTime >= _G.TeleportPlayerCooldown then
+                teleportToPlayer()
+                lastTeleportPlayerTime = now
+            end
         end
-    end
+    end)
 
-    if _G.TeleportPosLoop then
-        local now = tick()
-        if now - lastTeleportPosTime >= _G.TeleportPosCooldown then
-            teleportToPosition()
-            lastTeleportPosTime = now
+    -- Teleporte loop posição
+    pcall(function()
+        if _G.TeleportPosLoop then
+            local now = tick()
+            if now - lastTeleportPosTime >= _G.TeleportPosCooldown then
+                teleportToPosition()
+                lastTeleportPosTime = now
+            end
         end
-    end
+    end)
 
-    -- Hitbox
-    if _G.HitboxEnabled then
-        for _, player in pairs(players:GetPlayers()) do
-            if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = player.Character.HumanoidRootPart
-                local isEnemyPlayer = isEnemy(player, _G.HitboxTeamCheck)
-                local canApply = (_G.HitboxTargetPlayer == "Todos" or player.Name == _G.HitboxTargetPlayer)
-                if canApply and isEnemyPlayer then
-                    hrp.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
-                    hrp.Transparency = _G.HitboxTransparency
-                    hrp.Color = _G.HitboxColor
-                    hrp.Material = Enum.Material.Neon
-                    hrp.CanCollide = false
-                else
-                    hrp.Size = Vector3.new(2,2,1)
-                    hrp.Transparency = 1
-                    hrp.CanCollide = true
+    -- Instant Interact (aplicado a cada frame)
+    pcall(function()
+        if _G.InstantInteractEnabled then
+            for _, prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    prompt.HoldDuration = 0
                 end
             end
         end
-    end
+    end)
+
+    -- Hitbox
+    pcall(function()
+        if _G.HitboxEnabled then
+            for _, player in pairs(players:GetPlayers()) do
+                if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = player.Character.HumanoidRootPart
+                    local isEnemyPlayer = isEnemy(player, _G.HitboxTeamCheck)
+                    local canApply = (_G.HitboxTargetPlayer == "Todos" or player.Name == _G.HitboxTargetPlayer)
+                    if canApply and isEnemyPlayer then
+                        hrp.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                        hrp.Transparency = _G.HitboxTransparency
+                        hrp.Color = _G.HitboxColor
+                        hrp.Material = Enum.Material.Neon
+                        hrp.CanCollide = false
+                    else
+                        hrp.Size = Vector3.new(2,2,1)
+                        hrp.Transparency = 1
+                        hrp.CanCollide = true
+                    end
+                end
+            end
+        end
+    end)
 
     -- Aimbot
-    if _G.AimbotEnabled then
-        local targetPlayer = nil
-        local closestStuds = math.huge
-        local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-        local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-        local localPos = localRoot and localRoot.Position or camera.CFrame.Position
+    pcall(function()
+        if _G.AimbotEnabled then
+            local targetPlayer = nil
+            local closestStuds = math.huge
+            local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+            local localRoot = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            local localPos = localRoot and localRoot.Position or camera.CFrame.Position
 
-        for _, player in pairs(players:GetPlayers()) do
-            if player ~= lp and player.Character then
-                local canTarget = (_G.AimbotTargetPlayer == "Todos" or player.Name == _G.AimbotTargetPlayer)
-                if canTarget and isEnemy(player, _G.AimbotTeamCheck) then
-                    local part = getTargetPart(player)
-                    if part then
-                        local studs = (part.Position - localPos).Magnitude
+            for _, player in pairs(players:GetPlayers()) do
+                if player ~= lp and player.Character then
+                    local canTarget = (_G.AimbotTargetPlayer == "Todos" or player.Name == _G.AimbotTargetPlayer)
+                    if canTarget and isEnemy(player, _G.AimbotTeamCheck) then
+                        local part = getTargetPart(player)
+                        if part then
+                            local studs = (part.Position - localPos).Magnitude
 
-                        if _G.AimbotCircleEnabled then
-                            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
-                            if onScreen then
-                                local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                                if screenDist <= _G.AimbotCircleSize and isVisible(player, part) and studs < closestStuds then
+                            if _G.AimbotCircleEnabled then
+                                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+                                if onScreen then
+                                    local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                                    if screenDist <= _G.AimbotCircleSize and isVisible(player, part) and studs < closestStuds then
+                                        closestStuds = studs
+                                        targetPlayer = player
+                                    end
+                                end
+                            else
+                                if isVisible(player, part) and studs < closestStuds then
                                     closestStuds = studs
                                     targetPlayer = player
                                 end
-                            end
-                        else
-                            if isVisible(player, part) and studs < closestStuds then
-                                closestStuds = studs
-                                targetPlayer = player
                             end
                         end
                     end
                 end
             end
-        end
 
-        if targetPlayer and targetPlayer.Character then
-            local part = getTargetPart(targetPlayer)
-            if part then
-                camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
-                local rounded = math.floor(closestStuds * 100 + 0.5) / 100
-                DistanceText.Visible = true
-                DistanceText.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2 - 50)
-                DistanceText.Text = "Alvo: " .. targetPlayer.Name .. " | Distância: " .. tostring(rounded) .. " studs"
+            if targetPlayer and targetPlayer.Character then
+                local part = getTargetPart(targetPlayer)
+                if part then
+                    camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
+                    local rounded = math.floor(closestStuds * 100 + 0.5) / 100
+                    DistanceText.Visible = true
+                    DistanceText.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2 - 50)
+                    DistanceText.Text = "Alvo: " .. targetPlayer.Name .. " | Distância: " .. tostring(rounded) .. " studs"
+                end
+            else
+                DistanceText.Visible = false
             end
         else
             DistanceText.Visible = false
         end
-    else
-        DistanceText.Visible = false
-    end
+    end)
 
-    updateESP()
+    -- ESP
+    pcall(updateESP)
 end)
 
 players.PlayerAdded:Connect(function(player)
     if player ~= lp then
-        createESPDrawings(player)
+        pcall(function() createESPDrawings(player) end)
     end
 end)
 
 players.PlayerRemoving:Connect(function(player)
-    removeESPDrawings(player)
+    pcall(function() removeESPDrawings(player) end)
 end)
 
 lp.CharacterAdded:Connect(function(char)
     task.wait(0.1)
-    applyPlayerSettings()
+    pcall(applyPlayerSettings)
 end)
 
 -- Interface Rayfield
@@ -616,17 +661,8 @@ HitboxTab:CreateButton({
    Name = "Todos",
    Callback = function()
        _G.HitboxTargetPlayer = "Todos"
-       Rayfield:Notify({
-           Title = "Hitbox",
-           Content = "todos escolhidos!",
-           Duration = 2,
-           Image = 4483362458
-       })
-       StarterGui:SetCore("SendNotification", {
-           Title = "Hitbox",
-           Text = "todos escolhidos!",
-           Icon = "rbxassetid://4483362458"
-       })
+       Rayfield:Notify({ Title = "Hitbox", Content = "todos escolhidos!", Duration = 2, Image = 4483362458 })
+       StarterGui:SetCore("SendNotification", { Title = "Hitbox", Text = "todos escolhidos!", Icon = "rbxassetid://4483362458" })
    end,
 })
 HitboxTab:CreateColorPicker({
@@ -693,22 +729,12 @@ AimbotTab:CreateInput({
        setTargetFromInput(Text, "aimbot")
    end,
 })
--- Botão Todos do Aimbot
 AimbotTab:CreateButton({
    Name = "Todos",
    Callback = function()
        _G.AimbotTargetPlayer = "Todos"
-       Rayfield:Notify({
-           Title = "Aimbot",
-           Content = "todos escolhidos!",
-           Duration = 2,
-           Image = 4483362458
-       })
-       StarterGui:SetCore("SendNotification", {
-           Title = "Aimbot",
-           Text = "todos escolhidos!",
-           Icon = "rbxassetid://4483362458"
-       })
+       Rayfield:Notify({ Title = "Aimbot", Content = "todos escolhidos!", Duration = 2, Image = 4483362458 })
+       StarterGui:SetCore("SendNotification", { Title = "Aimbot", Text = "todos escolhidos!", Icon = "rbxassetid://4483362458" })
    end,
 })
 
@@ -777,53 +803,40 @@ ESPTab:CreateColorPicker({
    end,
 })
 
+-- Aba Player
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 PlayerTab:CreateSection("Atributos Físicos")
-PlayerTab:CreateInput({
+local SpeedInput = PlayerTab:CreateInput({
    Name = "Velocidade",
    PlaceholderText = "16",
    Callback = function(Text)
        local n = tonumber(Text)
        if n then
-           _G.SpeedValue = n
-           if _G.LoopSpeed then
-               local char = lp.Character
-               if char and char:FindFirstChildOfClass("Humanoid") then
-                   char:FindFirstChildOfClass("Humanoid").WalkSpeed = n
-               end
-           end
+           applyImmediate("Speed", n)
        end
    end,
 })
-PlayerTab:CreateInput({
+local JumpInput = PlayerTab:CreateInput({
    Name = "Pulo",
    PlaceholderText = "50",
    Callback = function(Text)
        local n = tonumber(Text)
        if n then
-           _G.JumpValue = n
-           if _G.LoopJump then
-               local char = lp.Character
-               if char and char:FindFirstChildOfClass("Humanoid") then
-                   char:FindFirstChildOfClass("Humanoid").JumpPower = n
-               end
-           end
+           applyImmediate("Jump", n)
        end
    end,
 })
-PlayerTab:CreateInput({
+local GravityInput = PlayerTab:CreateInput({
    Name = "Gravidade",
    PlaceholderText = "196.2",
    Callback = function(Text)
        local n = tonumber(Text)
        if n then
-           _G.GravityValue = n
-           if _G.LoopGravity then
-               workspace.Gravity = n
-           end
+           applyImmediate("Gravity", n)
        end
    end,
 })
+
 PlayerTab:CreateSection("Loops")
 PlayerTab:CreateToggle({
    Name = "Loop Speed",
@@ -862,6 +875,26 @@ PlayerTab:CreateToggle({
    end,
 })
 
+PlayerTab:CreateSection("Redefinir")
+PlayerTab:CreateButton({
+   Name = "Redefinir Valores",
+   Callback = function()
+       -- Redefine as variáveis
+       _G.SpeedValue = 16
+       _G.JumpValue = 50
+       _G.GravityValue = 196.2
+       -- Aplica imediatamente
+       applyImmediate("Speed", 16)
+       applyImmediate("Jump", 50)
+       applyImmediate("Gravity", 196.2)
+       -- Atualiza os campos de texto
+       pcall(function() SpeedInput:Set("16") end)
+       pcall(function() JumpInput:Set("50") end)
+       pcall(function() GravityInput:Set("196.2") end)
+       Rayfield:Notify({ Title = "Player", Content = "Valores redefinidos!", Duration = 2, Image = 4483362458 })
+   end,
+})
+
 PlayerTab:CreateSection("Teleporte para Jogador")
 PlayerTab:CreateInput({
    Name = "Nome do Jogador (parcial)",
@@ -870,12 +903,7 @@ PlayerTab:CreateInput({
        local found = findPlayerByPartialName(Text)
        if found then
            _G.TeleportTargetPlayer = found.Name
-           Rayfield:Notify({
-               Title = "Teleporte",
-               Content = found.Name .. " escolhido!",
-               Duration = 2,
-               Image = 4483362458
-           })
+           Rayfield:Notify({ Title = "Teleporte", Content = found.Name .. " escolhido!", Duration = 2, Image = 4483362458 })
        else
            _G.TeleportTargetPlayer = nil
        end
@@ -945,24 +973,20 @@ PlayerTab:CreateSection("Utilidades")
 PlayerTab:CreateButton({
    Name = "Instant Interact",
    Callback = function()
+       _G.InstantInteractEnabled = true
+       -- Aplicar imediatamente aos prompts existentes
        for _, prompt in pairs(workspace:GetDescendants()) do
            if prompt:IsA("ProximityPrompt") then
                prompt.HoldDuration = 0
-               prompt.Duration = 0
            end
        end
-       workspace.DescendantAdded:Connect(function(desc)
-           if desc:IsA("ProximityPrompt") then
-               desc.HoldDuration = 0
-               desc.Duration = 0
-           end
-       end)
+       Rayfield:Notify({ Title = "Player", Content = "Instant Interact ativado!", Duration = 2, Image = 4483362458 })
    end,
 })
 
 -- Inicializar ESP para jogadores existentes
 for _, player in pairs(players:GetPlayers()) do
     if player ~= lp then
-        createESPDrawings(player)
+        pcall(function() createESPDrawings(player) end)
     end
 end
